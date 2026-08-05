@@ -2,6 +2,12 @@
 
 return [
 
+    'go_api' => [
+        'url' => env('GO_API_BASE_URL', 'http://localhost:8080'),
+        'timeout' => env('GO_API_TIMEOUT', 15),
+        'connect_timeout' => env('GO_API_CONNECT_TIMEOUT', 5),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services

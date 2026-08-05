@@ -1,117 +1,115 @@
 import { Form, Head } from '@inertiajs/react';
+import { CircleAlert, Info, LockKeyhole, UserRound } from 'lucide-react';
 import InputError from '@/components/input-error';
-import PasskeyVerify from '@/components/passkey-verify';
 import PasswordInput from '@/components/password-input';
 import TextLink from '@/components/text-link';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
-import { request } from '@/routes/password';
 
 type Props = {
     status?: string;
-    canResetPassword: boolean;
 };
 
-export default function Login({ status, canResetPassword }: Props) {
+export default function Login({ status }: Props) {
     return (
         <>
-            <Head title="Log in" />
+            <Head title="Masuk" />
 
-            <PasskeyVerify />
+            {status && (
+                <Alert>
+                    <Info />
+                    <AlertDescription>{status}</AlertDescription>
+                </Alert>
+            )}
 
             <Form
                 {...store.form()}
                 resetOnSuccess={['password']}
+                disableWhileProcessing
                 className="flex flex-col gap-6"
             >
                 {({ processing, errors }) => (
                     <>
-                        <div className="grid gap-6">
-                            <div className="grid gap-2">
-                                <Label htmlFor="email">Email address</Label>
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    name="email"
-                                    required
-                                    autoFocus
-                                    tabIndex={1}
-                                    autoComplete="email"
-                                    placeholder="email@example.com"
-                                />
-                                <InputError message={errors.email} />
-                            </div>
+                        {errors.login && (
+                            <Alert variant="destructive">
+                                <CircleAlert />
+                                <AlertDescription>
+                                    {errors.login}
+                                </AlertDescription>
+                            </Alert>
+                        )}
 
+                        <div className="grid gap-5">
                             <div className="grid gap-2">
-                                <div className="flex items-center">
-                                    <Label htmlFor="password">Password</Label>
-                                    {canResetPassword && (
-                                        <TextLink
-                                            href={request()}
-                                            className="ml-auto text-sm"
-                                            tabIndex={5}
-                                        >
-                                            Forgot your password?
-                                        </TextLink>
-                                    )}
+                                <Label htmlFor="username">Username</Label>
+                                <div className="relative">
+                                    <UserRound className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                                    <Input
+                                        id="username"
+                                        type="text"
+                                        name="username"
+                                        required
+                                        autoFocus
+                                        autoCapitalize="none"
+                                        autoCorrect="off"
+                                        autoComplete="username"
+                                        placeholder="Masukkan username"
+                                        className="pl-9"
+                                        aria-invalid={Boolean(errors.username)}
+                                    />
                                 </div>
-                                <PasswordInput
-                                    id="password"
-                                    name="password"
-                                    required
-                                    tabIndex={2}
-                                    autoComplete="current-password"
-                                    placeholder="Password"
-                                />
-                                <InputError message={errors.password} />
+                                <InputError message={errors.username} />
                             </div>
 
-                            <div className="flex items-center space-x-3">
-                                <Checkbox
-                                    id="remember"
-                                    name="remember"
-                                    tabIndex={3}
-                                />
-                                <Label htmlFor="remember">Remember me</Label>
+                            <div className="grid gap-2">
+                                <Label htmlFor="password">Password</Label>
+                                <div className="relative">
+                                    <LockKeyhole className="pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
+                                    <PasswordInput
+                                        id="password"
+                                        name="password"
+                                        required
+                                        autoComplete="current-password"
+                                        placeholder="Masukkan password"
+                                        className="pl-9"
+                                        aria-invalid={Boolean(errors.password)}
+                                    />
+                                </div>
+                                <InputError message={errors.password} />
                             </div>
 
                             <Button
                                 type="submit"
-                                className="mt-4 w-full"
-                                tabIndex={4}
+                                className="mt-1 w-full"
                                 disabled={processing}
                                 data-test="login-button"
                             >
                                 {processing && <Spinner />}
-                                Log in
+                                {processing
+                                    ? 'Memverifikasi...'
+                                    : 'Masuk ke Dashboard'}
                             </Button>
                         </div>
 
-                        <div className="text-center text-sm text-muted-foreground">
-                            Don't have an account?{' '}
-                            <TextLink href={register()} tabIndex={5}>
-                                Sign up
+                        <p className="text-center text-sm text-muted-foreground">
+                            Belum memiliki akses?{' '}
+                            <TextLink href={register()}>
+                                Informasi akun
                             </TextLink>
-                        </div>
+                        </p>
                     </>
                 )}
             </Form>
-
-            {status && (
-                <div className="mb-4 text-center text-sm font-medium text-green-600">
-                    {status}
-                </div>
-            )}
         </>
     );
 }
 
 Login.layout = {
-    title: 'Log in to your account',
-    description: 'Enter your email and password below to log in',
+    title: 'Selamat datang kembali',
+    description: 'Masuk menggunakan akun yang diberikan administrator.',
 };

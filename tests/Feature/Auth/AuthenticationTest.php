@@ -2,91 +2,118 @@
 
 namespace Tests\Feature\Auth;
 
-use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
-use Laravel\Fortify\Features;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
 {
-    use RefreshDatabase;
-
-    public function test_login_screen_can_be_rendered()
+    public function test_login_screen_can_be_rendered(): void
     {
-        $response = $this->get(route('login'));
-
-        $response->assertOk();
+        $this->get(route('login'))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('auth/login')->where('status', null));
     }
 
-    public function test_users_can_authenticate_using_the_login_screen()
+    public function test_user_can_login_through_the_go_api(): void
     {
-        $user = User::factory()->create();
+        Http::fake(['http://go-api.test/api/login' => Http::response([
+            'token' => $this->jwtExpiringAt(now()->addHour()->timestamp),
+        ])]);
 
-        $response = $this->post(route('login.store'), [
-            'email' => $user->email,
-            'password' => 'password',
-        ]);
+        $response = $this->post(route('login.store'), ['username' => 'user', 'password' => 'pass']);
 
-        $this->assertAuthenticated();
         $response->assertRedirect(route('dashboard', absolute: false));
+        $response->assertSessionHas('auth.username', 'user');
+        $response->assertSessionHas('auth.token');
+        $response->assertSessionHas('auth.expires_at');
+        Http::assertSent(fn (Request $request) => $request->url() === 'http://go-api.test/api/login'
+            && $request['username'] === 'user' && $request['password'] === 'pass');
     }
 
-    public function test_users_with_two_factor_enabled_are_redirected_to_two_factor_challenge()
+    public function test_invalid_credentials_are_reported_without_storing_a_token(): void
     {
-        $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
+        Http::fake(['http://go-api.test/api/login' => Http::response([], 401)]);
 
-        Features::twoFactorAuthentication([
-            'confirm' => true,
-            'confirmPassword' => true,
-        ]);
-
-        $user = User::factory()->withTwoFactor()->create();
-
-        $response = $this->post(route('login'), [
-            'email' => $user->email,
-            'password' => 'password',
-        ]);
-
-        $response->assertRedirect(route('two-factor.login'));
-        $response->assertSessionHas('login.id', $user->id);
-        $this->assertGuest();
+        $this->from(route('login'))->post(route('login.store'), ['username' => 'user', 'password' => 'wrong'])
+            ->assertSessionHasErrors(['username' => 'Username atau password salah.'])
+            ->assertSessionMissing('auth.token');
     }
 
-    public function test_users_can_not_authenticate_with_invalid_password()
+    public function test_rate_limit_from_go_api_is_reported(): void
     {
-        $user = User::factory()->create();
+        Http::fake(['http://go-api.test/api/login' => Http::response([], 429, ['Retry-After' => '30'])]);
 
-        $this->post(route('login.store'), [
-            'email' => $user->email,
-            'password' => 'wrong-password',
-        ]);
-
-        $this->assertGuest();
+        $this->from(route('login'))->post(route('login.store'), ['username' => 'user', 'password' => 'pass'])
+            ->assertSessionHasErrors(['login' => 'Terlalu banyak percobaan. Coba lagi dalam 30 detik.']);
     }
 
-    public function test_users_can_logout()
+    public function test_unreachable_go_api_is_reported(): void
     {
-        $user = User::factory()->create();
+        Http::fake(fn () => throw new ConnectionException('Connection refused'));
 
-        $response = $this->actingAs($user)->post(route('logout'));
-
-        $response->assertRedirect(route('home'));
-
-        $this->assertGuest();
+        $this->from(route('login'))->post(route('login.store'), ['username' => 'user', 'password' => 'pass'])
+            ->assertSessionHasErrors(['login' => 'Layanan autentikasi tidak tersedia. Silakan coba lagi.']);
     }
 
-    public function test_users_are_rate_limited()
+    public function test_login_response_without_token_is_rejected(): void
     {
-        $user = User::factory()->create();
+        Http::fake(['http://go-api.test/api/login' => Http::response(['message' => 'ok'])]);
 
-        RateLimiter::increment(md5('login'.implode('|', [$user->email, '127.0.0.1'])), amount: 5);
+        $this->from(route('login'))->post(route('login.store'), ['username' => 'user', 'password' => 'pass'])
+            ->assertSessionHasErrors(['login' => 'Respons layanan autentikasi tidak valid.'])
+            ->assertSessionMissing('auth.token');
+    }
 
-        $response = $this->post(route('login.store'), [
-            'email' => $user->email,
-            'password' => 'wrong-password',
-        ]);
+    public function test_expired_token_is_rejected(): void
+    {
+        Http::fake(['http://go-api.test/api/login' => Http::response([
+            'token' => $this->jwtExpiringAt(now()->subMinute()->timestamp),
+        ])]);
 
-        $response->assertTooManyRequests();
+        $this->from(route('login'))->post(route('login.store'), ['username' => 'user', 'password' => 'pass'])
+            ->assertSessionHasErrors(['login' => 'Respons layanan autentikasi tidak valid.'])
+            ->assertSessionMissing('auth.token');
+    }
+
+    public function test_user_can_logout(): void
+    {
+        $response = $this->withSession([
+            'auth.token' => 'secret-token', 'auth.username' => 'user',
+            'auth.expires_at' => now()->addHour()->timestamp,
+        ])->post(route('logout'));
+
+        $response->assertRedirect(route('login'));
+        $response->assertSessionMissing('auth.token');
+        $response->assertSessionMissing('auth.username');
+        $response->assertSessionMissing('auth.expires_at');
+    }
+
+    public function test_login_is_rate_limited_by_username_and_ip(): void
+    {
+        RateLimiter::increment('user|127.0.0.1', amount: 5);
+
+        $this->from(route('login'))
+            ->post(route('login.store'), ['username' => 'user', 'password' => 'wrong'])
+            ->assertSessionHasErrors([
+                'login' => 'Terlalu banyak percobaan login. Silakan coba lagi nanti.',
+            ]);
+
+        Http::assertNothingSent();
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config()->set('services.go_api.url', 'http://go-api.test');
+    }
+
+    private function jwtExpiringAt(int $timestamp): string
+    {
+        $payload = rtrim(strtr(base64_encode(json_encode(['exp' => $timestamp], JSON_THROW_ON_ERROR)), '+/', '-_'), '=');
+
+        return "header.{$payload}.signature";
     }
 }

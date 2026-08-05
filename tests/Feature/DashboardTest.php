@@ -2,26 +2,36 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class DashboardTest extends TestCase
 {
-    use RefreshDatabase;
-
-    public function test_guests_are_redirected_to_the_login_page()
+    public function test_guests_are_redirected_to_the_login_page(): void
     {
-        $response = $this->get(route('dashboard'));
-        $response->assertRedirect(route('login'));
+        $this->get(route('dashboard'))->assertRedirect(route('login'));
     }
 
-    public function test_authenticated_users_can_visit_the_dashboard()
+    public function test_valid_go_api_session_can_visit_the_dashboard(): void
     {
-        $user = User::factory()->create();
-        $this->actingAs($user);
+        $this->withSession([
+            'auth.token' => 'secret-token', 'auth.username' => 'user',
+            'auth.expires_at' => now()->addHour()->timestamp,
+        ])->get(route('dashboard'))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('dashboard')
+                ->where('auth.user.username', 'user')
+                ->missing('auth.token'));
+    }
 
-        $response = $this->get(route('dashboard'));
-        $response->assertOk();
+    public function test_expired_go_api_session_is_invalidated(): void
+    {
+        $this->withSession([
+            'auth.token' => 'secret-token', 'auth.username' => 'user',
+            'auth.expires_at' => now()->subMinute()->timestamp,
+        ])->get(route('dashboard'))
+            ->assertRedirect(route('login'))
+            ->assertSessionHas('status', 'Sesi Anda telah berakhir. Silakan login kembali.')
+            ->assertSessionMissing('auth.token');
     }
 }
