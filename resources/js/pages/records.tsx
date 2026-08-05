@@ -1,6 +1,7 @@
 import { Head } from '@inertiajs/react';
 import {
     Database,
+    Gauge,
     Plus,
     RefreshCw,
     Search,
@@ -41,6 +42,7 @@ export default function RecordsPage() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [errorCode, setErrorCode] = useState<string | undefined>();
     const [lastSynced, setLastSynced] = useState<Date | null>(null);
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -61,6 +63,7 @@ export default function RecordsPage() {
         }
 
         setError(null);
+        setErrorCode(undefined);
 
         try {
             setRecords(await getRecords());
@@ -75,11 +78,12 @@ export default function RecordsPage() {
                 return;
             }
 
-            setError(
-                requestError instanceof Error
-                    ? requestError.message
-                    : 'Records gagal dimuat.',
+            setErrorCode(
+                requestError instanceof RecordsApiError
+                    ? requestError.code
+                    : undefined,
             );
+            setError(messageFor(requestError));
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -110,11 +114,12 @@ export default function RecordsPage() {
                     return;
                 }
 
-                setError(
-                    requestError instanceof Error
-                        ? requestError.message
-                        : 'Records gagal dimuat.',
+                setErrorCode(
+                    requestError instanceof RecordsApiError
+                        ? requestError.code
+                        : undefined,
                 );
+                setError(messageFor(requestError));
             })
             .finally(() => active && setLoading(false));
 
@@ -156,7 +161,7 @@ export default function RecordsPage() {
     return (
         <>
             <Head title="Records" />
-            <div className="flex h-full flex-1 flex-col gap-5 p-4 md:p-6">
+            <div className="flex h-full flex-1 flex-col gap-5 bg-[#f8fafc] p-4 md:p-8">
                 <header className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
                     <div>
                         <p className="text-sm font-medium text-muted-foreground">
@@ -194,9 +199,16 @@ export default function RecordsPage() {
                 </header>
 
                 {error && (
-                    <Alert variant="destructive">
-                        <TriangleAlert />
-                        <AlertTitle>Data gagal dimuat</AlertTitle>
+                    <Alert
+                        variant="destructive"
+                        className="rounded-2xl border-[#ff0025]/25 bg-[#fff1f2] shadow-sm"
+                    >
+                        {errorCode === 'RATE_LIMITED' ? <Gauge /> : <TriangleAlert />}
+                        <AlertTitle>
+                            {errorCode === 'RATE_LIMITED'
+                                ? 'Permintaan dibatasi sementara'
+                                : 'Data gagal dimuat'}
+                        </AlertTitle>
                         <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
                             <span>{error}</span>
                             <Button
@@ -377,6 +389,16 @@ function EmptyState({
             </div>
         </div>
     );
+}
+
+function messageFor(error: unknown): string {
+    if (error instanceof RecordsApiError && error.code === 'RATE_LIMITED') {
+        return error.retryAfter
+            ? `Terlalu banyak permintaan. Tunggu ${error.retryAfter} detik lalu coba kembali.`
+            : 'Terlalu banyak permintaan. Tunggu beberapa saat lalu coba kembali.';
+    }
+
+    return error instanceof Error ? error.message : 'Records gagal dimuat.';
 }
 
 RecordsPage.layout = { breadcrumbs: [{ title: 'Records', href: '/records' }] };

@@ -1,0 +1,121 @@
+name: telkomsel-analytics
+
+services:
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: nginx
+    ports:
+      - "7012:80"
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - dashboard
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost/up || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+    environment:
+      APP_NAME: Telkomsel
+      APP_ENV: production
+      APP_KEY: "${APP_KEY:-base64:qnOPUAlr8jdtuX2mXc6WnN5XEEIlueStw4mt0JQw6fA=}"
+      APP_DEBUG: "false"
+      APP_URL: "${APP_URL:-http://localhost:7012}"
+      LOG_CHANNEL: stderr
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: "${DB_DATABASE:-dashboard}"
+      DB_USERNAME: "${DB_USERNAME:-dashboard}"
+      DB_PASSWORD: "${DB_PASSWORD:-dashboard_secret}"
+      SESSION_DRIVER: database
+      SESSION_ENCRYPT: "true"
+      CACHE_STORE: database
+      QUEUE_CONNECTION: database
+      GO_API_BASE_URL: http://go-api:8080
+      GO_API_TIMEOUT: "15"
+      GO_API_CONNECT_TIMEOUT: "5"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      go-api:
+        condition: service_started
+    networks:
+      - dashboard
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "php artisan --version >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: "${DB_DATABASE:-dashboard}"
+      MYSQL_USER: "${DB_USERNAME:-dashboard}"
+      MYSQL_PASSWORD: "${DB_PASSWORD:-dashboard_secret}"
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:-root_secret_change_me}"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - dashboard
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  go-api:
+    image: bektigalan/test:latest
+    ports:
+      - "8080:8080"
+    networks:
+      - dashboard
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+networks:
+  dashboard:
+    driver: bridge
+
+volumes:
+  mysql_data:

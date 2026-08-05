@@ -1,3 +1,72 @@
+# Telkomsel Analytics Dashboard
+
+Dashboard Laravel/Inertia yang menggunakan Go REST API untuk autentikasi JWT, records, dan statistik. Aplikasi bisa dijalankan sebagai container melalui Docker Desktop maupun Podman.
+
+## Menjalankan dengan Docker Desktop
+
+1. Buka **Docker Desktop** dan tunggu sampai statusnya `Running`.
+2. Dari root proyek, jalankan:
+
+```powershell
+docker compose up -d --build
+```
+
+3. Buka aplikasi di [http://localhost:7012](http://localhost:7012). Go API tersedia untuk pemeriksaan di [http://localhost:8080](http://localhost:8080), sementara Laravel tetap mengaksesnya lewat jaringan internal container.
+
+Masuk menggunakan kredensial API berikut:
+
+```text
+username: user
+password: pass
+```
+
+Untuk menguji CRUD dari awal: buka landing page, masuk, lalu buka **Records** dan klik **Generate Seed Data** (misalnya `10`). Tambahkan record melalui **Tambah Record**, lalu hapus salah satu record dari tabel.
+
+Perintah berguna:
+
+```powershell
+docker compose ps
+docker compose logs -f
+docker compose down
+```
+
+Data MySQL disimpan dalam named volume `mysql_data`. Untuk menghapus seluruh data pengujian:
+
+```powershell
+docker compose down -v
+```
+
+## Podman
+
+Compose file yang sama kompatibel dengan Podman:
+
+```bash
+podman compose up -d --build
+# atau, bila instalasi Anda memakai podman-compose:
+podman-compose up -d --build
+```
+
+## Deployment Offline
+
+Di mesin yang memiliki internet, build dan unduh seluruh image:
+
+```bash
+docker compose build
+docker compose pull go-api mysql
+docker save telkomsel-analytics-app telkomsel-analytics-nginx bektigalan/test:latest mysql:8.4 -o telkomsel-analytics-images.tar
+```
+
+Lalu pindahkan file `telkomsel-analytics-images.tar`, source proyek, dan `compose.yaml` ke server. Di server tanpa internet:
+
+```bash
+docker load -i telkomsel-analytics-images.tar
+docker compose up -d
+```
+
+Untuk rilis production, ganti password database dan `APP_KEY` melalui environment sebelum menjalankan Compose.
+
+---
+
 # Tugas Teknis Developer: Dashboard Full-Stack & Penggelaran Kontainer (Docker/Podman)
 
 Selamat datang di tugas teknis ini! Dalam tugas ini, Anda diminta untuk membangun aplikasi web dashboard yang terintegrasi dengan layanan Go REST API yang sudah ada. Aplikasi ini memiliki fitur autentikasi JWT, manajemen tabel data dengan kemampuan tambah/hapus, grafik analitik interaktif untuk pendapatan (revenue) dan pengguna (user), serta penggelaran terwadahi (containerized) menggunakan Docker atau Podman. **Untuk API source berada di paling bawah dokumen ini**

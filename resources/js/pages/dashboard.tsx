@@ -93,16 +93,8 @@ const timeFormatter = new Intl.DateTimeFormat('id-ID', {
 });
 
 const userColors = [
-    '#2563eb',
-    '#7c3aed',
-    '#0891b2',
-    '#059669',
-    '#ca8a04',
-    '#ea580c',
-    '#dc2626',
-    '#db2777',
-    '#4f46e5',
-    '#64748b',
+    '#ff0025', '#001a41', '#fda22b', '#b70024', '#6b7280',
+    '#3b82f6', '#22c55e', '#ea580c', '#7c3aed', '#0891b2',
 ];
 
 class DashboardApiError extends Error {
@@ -257,8 +249,8 @@ export default function Dashboard() {
                 {
                     label: 'Pendapatan',
                     data: siteRevenue.map(([, revenue]) => revenue),
-                    backgroundColor: 'rgba(37, 99, 235, 0.72)',
-                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(255, 0, 37, 0.78)',
+                    borderColor: '#ff0025',
                     borderWidth: 1,
                     borderRadius: 6,
                 },
@@ -304,14 +296,14 @@ export default function Dashboard() {
                 beginAtZero: true,
                 grid: { color: 'rgba(148, 163, 184, 0.18)' },
                 ticks: {
-                    color: '#71717a',
+                    color: '#6b7280',
                     callback: (value) =>
                         compactCurrencyFormatter.format(Number(value)),
                 },
             },
             y: {
                 grid: { display: false },
-                ticks: { color: '#71717a' },
+                ticks: { color: '#6b7280' },
             },
         },
     };
@@ -325,7 +317,7 @@ export default function Dashboard() {
                 position: 'bottom',
                 labels: {
                     boxWidth: 10,
-                    color: '#71717a',
+                    color: '#6b7280',
                     padding: 16,
                     usePointStyle: true,
                 },
@@ -342,13 +334,13 @@ export default function Dashboard() {
     return (
         <>
             <Head title="Dashboard" />
-            <main className="flex flex-1 flex-col gap-6 overflow-x-hidden p-4 md:p-6">
+            <main className="flex flex-1 flex-col gap-8 overflow-x-hidden bg-[#f8fafc] p-4 md:p-8">
                 <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                         <p className="text-sm font-medium text-muted-foreground">
                             Ringkasan performa sistem
                         </p>
-                        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
+                        <h1 className="text-3xl font-bold tracking-tight text-[#001a41] md:text-4xl">
                             Dashboard Analitik
                         </h1>
                         <p className="mt-1 text-sm text-muted-foreground">
@@ -372,6 +364,13 @@ export default function Dashboard() {
                     </Button>
                 </header>
 
+                <section className="relative overflow-hidden rounded-[28px_28px_96px_28px] bg-[linear-gradient(135deg,#001a41_0%,#06285d_100%)] px-6 py-8 text-white md:px-8">
+                    <div className="absolute -right-8 -bottom-12 size-48 rounded-full border-[24px] border-[#fda22b]/30" />
+                    <p className="relative text-sm font-semibold tracking-wide text-[#fda22b] uppercase">System insight</p>
+                    <h2 className="relative mt-2 max-w-2xl text-2xl font-bold md:text-3xl">Seluruh performa operasional dalam satu tampilan.</h2>
+                    <p className="relative mt-3 max-w-xl text-sm leading-6 text-white/75">Gunakan ringkasan ini untuk memantau revenue, aktivitas pengguna, dan kesehatan backend secara cepat.</p>
+                </section>
+
                 {errors.stats && stats && (
                     <InlineError
                         message={`${errors.stats} Menampilkan statistik terakhir.`}
@@ -380,7 +379,7 @@ export default function Dashboard() {
 
                 <section
                     aria-label="Metrik utama"
-                    className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+                    className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3"
                 >
                     <MetricCard
                         title="Total Records"
@@ -454,7 +453,7 @@ export default function Dashboard() {
 
                 <section
                     aria-label="Grafik analitik"
-                    className="grid gap-4 xl:grid-cols-5"
+                    className="grid gap-5 xl:grid-cols-5"
                 >
                     <ChartCard
                         className="xl:col-span-3"
@@ -501,12 +500,12 @@ function MetricCard({
     error?: string;
 }) {
     return (
-        <Card className="gap-4 overflow-hidden py-5">
+        <Card className="gap-4 overflow-hidden border-0 py-5 shadow-[0_1px_2px_rgba(0,26,65,.04),0_10px_30px_rgba(0,26,65,.07)] transition-shadow hover:shadow-[0_4px_8px_rgba(0,26,65,.06),0_18px_40px_rgba(0,26,65,.12)]">
             <CardHeader className="flex-row items-center justify-between gap-4">
                 <div className="space-y-1">
                     <CardDescription>{title}</CardDescription>
                     {value ? (
-                        <CardTitle className="text-2xl tabular-nums">
+                        <CardTitle className="text-2xl font-bold tabular-nums text-[#001a41]">
                             {value}
                         </CardTitle>
                     ) : error ? (
@@ -517,7 +516,7 @@ function MetricCard({
                         <Skeleton className="h-8 w-32" />
                     )}
                 </div>
-                <div className="rounded-xl bg-primary/10 p-3 text-primary">
+                <div className="rounded-2xl bg-primary/10 p-3 text-primary">
                     <Icon className="size-5" aria-hidden="true" />
                 </div>
             </CardHeader>
@@ -548,7 +547,7 @@ function ChartCard({
     children: ReactNode;
 }) {
     return (
-        <Card className={className}>
+        <Card className={`border-0 shadow-[0_1px_2px_rgba(0,26,65,.04),0_10px_30px_rgba(0,26,65,.07)] ${className ?? ''}`}>
             <CardHeader>
                 <CardTitle>{title}</CardTitle>
                 <CardDescription>{description}</CardDescription>

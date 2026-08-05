@@ -5,6 +5,7 @@ export class RecordsApiError extends Error {
         message: string,
         public readonly code?: string,
         public readonly errors?: Record<string, string[]>,
+        public readonly retryAfter?: number,
     ) {
         super(message);
     }
@@ -41,10 +42,19 @@ async function request<T>(
 
     if (!response.ok || !body.success) {
         if (body.code === 'SESSION_EXPIRED') {
+            window.sessionStorage.setItem(
+                'telkomsel-analytics-notice',
+                'Sesi Anda telah berakhir. Silakan login kembali.',
+            );
             window.location.assign('/login');
         }
 
-        throw new RecordsApiError(body.message, body.code, body.errors);
+        throw new RecordsApiError(
+            body.message,
+            body.code,
+            body.errors,
+            body.retry_after,
+        );
     }
 
     return body;
