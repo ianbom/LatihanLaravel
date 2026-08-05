@@ -3,8 +3,14 @@ import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import { dashboard } from '@/routes';
 import PieChart from '@/components/pie-chart';
 import BarChart from '@/components/bar-chart';
+import LineChart from '@/components/line-chart';
+import ScatterChart from '@/components/scatter-chart';
+import RadarChart from '@/components/radar-chart';
+import PolarChart from '@/components/polar-chart';
 
-export default function Dashboard({products}: any) {
+export default function Dashboard({products, revenueByMonth, productOrderTotal}: any) {
+    // console.log(revenueByMonth); 
+    
     return (
         <>
             <Head title="Dashboard" />
@@ -21,8 +27,12 @@ export default function Dashboard({products}: any) {
                     </div>
                 </div>
                 <div className="relative min-h-[100vh] flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border">
-                  <PieChart/>
-                  <BarChart products={products}/>
+                  <PieChart productOrderTotal={productOrderTotal}/>
+                  <BarChart products={products}/> 
+                  <LineChart revenueByMonth={revenueByMonth}/> 
+                  <ScatterChart/>
+                  <RadarChart/>
+                  <PolarChart/>
                 </div>
             </div>
         </>

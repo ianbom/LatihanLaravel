@@ -8,19 +8,38 @@ import { Doughnut } from 'react-chartjs-2';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-const data = {
-    labels: [
-        'Barang 1',
-        'Barang 2',
-        'Barang 3',
-    ],
+
+
+const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+
+    plugins: {
+        legend: {
+            position: 'bottom' as const,
+        },
+
+        tooltip: {
+            enabled: true,
+        },
+    },
+};
+
+export default function PieChart({productOrderTotal}:any) {
+    const productName = (productOrderTotal.map((item: any) => item.product_name)) 
+    const totalOrder = (productOrderTotal.map((item: any) => item.total_buyed)) 
+
+
+    const data = {
+    labels: productName
+    ,
 
     datasets: [
         {
             label: 'Jumlah Barang',
 
             // Gunakan number, bukan string.
-            data: [5, 10, 15],
+            data: totalOrder,
 
             backgroundColor: [
                 '#111827',
@@ -39,24 +58,9 @@ const data = {
     ],
 };
 
-const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-
-    plugins: {
-        legend: {
-            position: 'bottom' as const,
-        },
-
-        tooltip: {
-            enabled: true,
-        },
-    },
-};
-
-export default function PieChart() {
     return (
         <div className="h-[400px] w-full">
+            Ini donat chart
             <Doughnut
                 data={data}
                 options={options}
